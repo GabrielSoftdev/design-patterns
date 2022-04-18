@@ -1,6 +1,7 @@
 # DESIGN PATTERNS WITH JAVA
 
 I built a project to exercise "Object Calisthenics" using some of the more common design patterns like Strategy, Chain of responsibility, Model Method, State, Command, Observer.
+
 The project in question is based on some e-commerce rules, such as calculating discounts, budgets, taxes, etc.
 
 ## Strategy
