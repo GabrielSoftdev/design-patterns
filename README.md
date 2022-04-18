@@ -105,3 +105,119 @@ public class TaxesCalculator {
 }
 
 ```
+
+## Chain of Responsibility
+
+Continuing with the construction of the e-commerce business rule, I came across a situation similar to the previous one, but this time there was a real need for conditionals because there were no pre-established values immediately, a chain of verifications was needed. The separation of types of discounts into classes was not enough, because even so, we would pass the responsibility of verifying the type of discount to another and only class.
+
+```java
+
+public class Budget {
+    private BigDecimal value;
+    private int itensQuantity;
+
+    public Budget(BigDecimal value, int itensQuantity) {
+        this.value = value;
+        this.itensQuantity = itensQuantity;
+    }
+
+    public BigDecimal getValue() {
+        return value;
+    }
+
+    public int getItensQuantity() {
+        return itensQuantity;
+    }
+}
+
+public class DiscountCalculator {
+    public BigDecimal calculateDiscount(Budget budget) {
+        if (budget.getItensQuantity() > 5)
+            return budget.getValue().multiply(new BigDecimal("0.1"));
+        if (budget.getValue().compareTo(new BigDecimal("500")) > 0)
+            return budget.getValue().multiply(new BigDecimal("0.1"));
+        return BigDecimal.ZERO;
+    }
+}
+
+```
+
+And to solve this problem I had to rely on the chain of responsibility pattern, I destroyed the "if's" in classes linked as links by a parent class, thus enabling a self-assessment loop of these classes, letting them decide if the proposed value (budget) applies to the class method (discount calculation).
+
+
+```java
+
+public class Budget {
+    private BigDecimal value;
+    private int itensQuantity;
+
+    public Budget(BigDecimal value, int itensQuantity) {
+        this.value = value;
+        this.itensQuantity = itensQuantity;
+    }
+
+    public BigDecimal getValue() {
+        return value;
+    }
+
+    public int getItensQuantity() {
+        return itensQuantity;
+    }
+}
+
+public abstract class Discount {
+    protected Discount nextDiscount;
+
+    public Discount(Discount nextDiscount) {
+        this.nextDiscount = nextDiscount;
+    }
+
+    public abstract BigDecimal calculate(Budget budget);
+}
+
+public class DiscountByTotal extends Discount {
+    public DiscountByTotal(Discount nextDiscount) {
+        super(nextDiscount);
+    }
+
+    public BigDecimal calculate(Budget budget) {
+        if (budget.getValue().compareTo(new BigDecimal("500")) > 0)
+            return budget.getValue().multiply(new BigDecimal("0.6"));
+
+        return nextDiscount.calculate(budget);
+    }
+}
+
+public class DiscountByQuantity extends Discount {
+    public DiscountByQuantity(Discount nextDiscount) {
+        super(nextDiscount);
+    }
+
+    public BigDecimal calculate(Budget budget) {
+        if (budget.getItensQuantity() > 5)
+            return budget.getValue().multiply(new BigDecimal("0.1"));
+
+        return nextDiscount.calculate(budget);
+    }
+}
+
+// the WithoutDiscount class only serves to indicate the end of the search for discounts and apply the full amount of the budget like as an "else" or "default"
+public class WithoutDiscount extends Discount{
+
+    public WithoutDiscount() {
+        super(null);
+    }
+
+    @Override
+    public BigDecimal calculate(Budget budget) {
+        return BigDecimal.ZERO;
+    }
+}
+
+public class DiscountCalculator {
+    public BigDecimal calculateDiscount(Budget budget) {
+        Discount discount = new DiscountByTotal(new DiscountByQuantity(new WithoutDiscount()));
+        return discount.calculate(budget);
+    }
+}
+```
